@@ -29,6 +29,7 @@ services:
     build:
       context: ../hub-backends/modulo_middleware
       dockerfile: Dockerfile
+    container_name: ms_middleware
     environment:
       - JWT_SECRET=super-secret-key-123
     networks:
@@ -39,6 +40,7 @@ services:
     build:
       context: ../hub-backends/modulo_administracion
       dockerfile: Dockerfile
+    container_name: ms_administracion
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -49,6 +51,7 @@ services:
     build:
       context: ../hub-backends/modulo_rrhh
       dockerfile: Dockerfile
+    container_name: ms_rrhh
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -59,6 +62,7 @@ services:
     build:
       context: ../hub-backends/modulo_mantencion
       dockerfile: Dockerfile
+    container_name: ms_mantencion
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -69,6 +73,7 @@ services:
     build:
       context: ../hub-backends/modulo_bodega
       dockerfile: Dockerfile
+    container_name: ms_bodega
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -79,6 +84,7 @@ services:
     build:
       context: ../hub-backends/modulo_facturacion
       dockerfile: Dockerfile
+    container_name: ms_facturacion
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -89,6 +95,7 @@ services:
     build:
       context: ../hub-backends/modulo_operacion
       dockerfile: Dockerfile
+    container_name: ms_operacion
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -99,6 +106,7 @@ services:
     build:
       context: ../hub-backends/modulo_prevencion
       dockerfile: Dockerfile
+    container_name: ms_prevencion
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
@@ -109,6 +117,7 @@ services:
     build:
       context: ../hub-backends/modulo_acreditacion
       dockerfile: Dockerfile
+    container_name: ms_acreditacion
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
       - JWT_SECRET=super-secret-key-123
