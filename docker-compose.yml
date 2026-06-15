@@ -27,7 +27,7 @@ services:
   # --- MIDDLEWARE & AUTH ---
   ms-middleware:
     build:
-      context: ./modulo_middleware
+      context: ../hub-backends/modulo_middleware
       dockerfile: Dockerfile
     environment:
       - JWT_SECRET=super-secret-key-123
@@ -37,7 +37,7 @@ services:
   # --- MICROSERVICES ---
   ms-administracion:
     build:
-      context: ./modulo_administracion
+      context: ../hub-backends/modulo_administracion
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -47,7 +47,7 @@ services:
 
   ms-rrhh:
     build:
-      context: ./modulo_rrhh
+      context: ../hub-backends/modulo_rrhh
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -57,7 +57,7 @@ services:
 
   ms-mantencion:
     build:
-      context: ./modulo_mantencion
+      context: ../hub-backends/modulo_mantencion
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -67,7 +67,7 @@ services:
 
   ms-bodega:
     build:
-      context: ./modulo_bodega
+      context: ../hub-backends/modulo_bodega
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -77,7 +77,7 @@ services:
 
   ms-facturacion:
     build:
-      context: ./modulo_facturacion
+      context: ../hub-backends/modulo_facturacion
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -87,7 +87,7 @@ services:
 
   ms-operacion:
     build:
-      context: ./modulo_operacion
+      context: ../hub-backends/modulo_operacion
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -97,7 +97,7 @@ services:
 
   ms-prevencion:
     build:
-      context: ./modulo_prevencion
+      context: ../hub-backends/modulo_prevencion
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -107,7 +107,7 @@ services:
 
   ms-acreditacion:
     build:
-      context: ./modulo_acreditación
+      context: ../hub-backends/modulo_acreditacion
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
@@ -117,7 +117,7 @@ services:
 
   ms-watchdog:
     build:
-      context: ./modulo_watchdog
+      context: ../hub-backends/modulo_watchdog
       dockerfile: Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -129,7 +129,7 @@ services:
   # --- FRONTENDS ---
   front-login:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_login/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -138,7 +138,7 @@ services:
 
   front-administracion:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_administracion/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -147,7 +147,7 @@ services:
 
   front-rrhh:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_rrhh/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -156,7 +156,7 @@ services:
 
   front-mantencion:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_mantencion/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -165,7 +165,7 @@ services:
 
   front-bodega:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_bodega/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -174,7 +174,7 @@ services:
 
   front-facturacion:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_facturacion/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -183,7 +183,7 @@ services:
 
   front-operacion:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_operacion/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -192,7 +192,7 @@ services:
 
   front-prevencion:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_prevencion/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
@@ -201,8 +201,8 @@ services:
 
   front-acreditacion:
     build:
-      context: .
-      dockerfile: ./front_modulo_acreditación/Dockerfile
+      context: ../hub-frontends
+      dockerfile: ./front_modulo_acreditacion/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
     networks:
@@ -210,7 +210,7 @@ services:
 
   front-watchdog:
     build:
-      context: .
+      context: ../hub-frontends
       dockerfile: ./front_modulo_watchdog/Dockerfile
     environment:
       - VITE_API_URL=/api/v1
