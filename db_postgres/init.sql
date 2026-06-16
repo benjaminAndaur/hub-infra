@@ -136,3 +136,269 @@ INSERT INTO incidentes (titulo, descripcion, nivel_gravedad) VALUES
 ('Corte en mano', 'Mecanico se corto con pieza metalica', 'Media'),
 ('Extintor vencido', 'Se detecto extintor vencido en bodega principal', 'Baja')
 ON CONFLICT DO NOTHING;
+
+-- Bodega: Solicitudes de Bodega
+CREATE TABLE IF NOT EXISTS solicitudes_bodega (
+    id BIGSERIAL PRIMARY KEY,
+    area_solicitante VARCHAR(100) NOT NULL,
+    usuario_solicitante VARCHAR(150) NOT NULL,
+    fecha_solicitud TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
+    detalles_json JSON NOT NULL DEFAULT '[]',
+    comentarios VARCHAR(500)
+);
+
+INSERT INTO solicitudes_bodega (area_solicitante, usuario_solicitante, estado, detalles_json, comentarios) VALUES
+('Mantencion', 'Carlos Lopez', 'Pendiente', '[{"producto_id": 1, "cantidad": 2}]', 'Urgente para camion Scania'),
+('Operaciones', 'Maria Gomez', 'Aprobada', '[{"producto_id": 3, "cantidad": 5}]', NULL)
+ON CONFLICT DO NOTHING;
+
+-- Mantención: Vehículos
+CREATE TABLE IF NOT EXISTS vehiculos (
+    id BIGSERIAL PRIMARY KEY,
+    patente VARCHAR(50) UNIQUE NOT NULL,
+    modelo VARCHAR(100),
+    color VARCHAR(50),
+    numero_interno VARCHAR(50),
+    device_id BIGINT,
+    estado VARCHAR(50) NOT NULL DEFAULT 'Disponible',
+    notas TEXT
+);
+
+CREATE INDEX idx_vehiculos_patente ON vehiculos(patente);
+
+INSERT INTO vehiculos (patente, modelo, color, numero_interno, estado) VALUES
+('AB-CD-12', 'Scania R450', 'Blanco', 'T-01', 'Disponible'),
+('EF-GH-34', 'Volvo FH16', 'Rojo', 'T-02', 'Disponible'),
+('IJ-KL-56', 'Mercedes Actros', 'Azul', 'T-03', 'BLOQUEADO POR MANTENCIÓN PREVENTIVA')
+ON CONFLICT (patente) DO NOTHING;
+
+-- Mantención: Templates de mantención
+CREATE TABLE IF NOT EXISTS mantenciones_template (
+    id BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion VARCHAR(500),
+    tareas_json JSON,
+    repuestos_json_default JSON
+);
+
+INSERT INTO mantenciones_template (nombre, descripcion, tareas_json, repuestos_json_default) VALUES
+('Mantención Preventiva 10.000km', 'Revisión y cambio de fluidos cada 10.000km', '["Cambio de aceite", "Revisión de frenos", "Revisión de neumáticos"]', '[{"producto_id": 1, "cantidad": 1}]'),
+('Mantención Preventiva 50.000km', 'Mantención mayor cada 50.000km', '["Cambio de filtros", "Revisión de suspensión", "Alineación"]', '[{"producto_id": 3, "cantidad": 2}]')
+ON CONFLICT DO NOTHING;
+
+-- Mantención: Mantenciones
+CREATE TABLE IF NOT EXISTS mantenciones (
+    id BIGSERIAL PRIMARY KEY,
+    vehiculo_id BIGINT NOT NULL REFERENCES vehiculos(id) ON DELETE CASCADE,
+    mecanico_id BIGINT NOT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_ingreso TIMESTAMP,
+    fecha_salida TIMESTAMP,
+    fecha_programada TIMESTAMP,
+    odometro BIGINT,
+    tareas TEXT,
+    estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente'
+);
+
+CREATE INDEX idx_mantenciones_vehiculo_id ON mantenciones(vehiculo_id);
+CREATE INDEX idx_mantenciones_estado ON mantenciones(estado);
+
+INSERT INTO mantenciones (vehiculo_id, mecanico_id, tipo, fecha_programada, estado) VALUES
+(3, 3, 'Preventiva', CURRENT_TIMESTAMP, 'En Progreso')
+ON CONFLICT DO NOTHING;
+
+-- Mantención: Órdenes de Trabajo
+CREATE TABLE IF NOT EXISTS ordenes_trabajo (
+    id BIGSERIAL PRIMARY KEY,
+    mantencion_id BIGINT NOT NULL REFERENCES mantenciones(id) ON DELETE CASCADE,
+    mecanico_id BIGINT NOT NULL,
+    estado VARCHAR(50) NOT NULL DEFAULT 'Abierta',
+    fecha_inicio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin TIMESTAMP
+);
+
+CREATE INDEX idx_ot_mantencion_id ON ordenes_trabajo(mantencion_id);
+
+INSERT INTO ordenes_trabajo (mantencion_id, mecanico_id, estado) VALUES
+(1, 3, 'Abierta')
+ON CONFLICT DO NOTHING;
+
+-- Mantención: Repuestos usados en Órdenes de Trabajo
+CREATE TABLE IF NOT EXISTS ot_repuestos (
+    id BIGSERIAL PRIMARY KEY,
+    ot_id BIGINT NOT NULL REFERENCES ordenes_trabajo(id) ON DELETE CASCADE,
+    producto_id BIGINT NOT NULL,
+    cantidad_solicitada BIGINT NOT NULL DEFAULT 1,
+    cantidad_usada BIGINT NOT NULL DEFAULT 0,
+    cantidad_devuelta BIGINT NOT NULL DEFAULT 0,
+    estado_devolucion VARCHAR(50) NOT NULL DEFAULT 'Ninguna'
+);
+
+CREATE INDEX idx_ot_repuestos_ot_id ON ot_repuestos(ot_id);
+
+INSERT INTO ot_repuestos (ot_id, producto_id, cantidad_solicitada) VALUES
+(1, 1, 2)
+ON CONFLICT DO NOTHING;
+
+-- Mantención: Reportes GPS (telemetría de vehículos)
+CREATE TABLE IF NOT EXISTS reportes (
+    report_id TEXT PRIMARY KEY,
+    sequential_id BIGINT,
+    report_date TIMESTAMPTZ,
+    input_date TIMESTAMPTZ,
+    device_id BIGINT,
+    holder_id BIGINT,
+    asset_id TEXT,
+    asset_name TEXT,
+    event_id INT,
+    event_name TEXT,
+    gps_validity INT,
+    gps_satellites INT,
+    gps_dop FLOAT,
+    latitude FLOAT,
+    longitude FLOAT,
+    location TEXT,
+    area_type TEXT,
+    speed FLOAT,
+    heading INT,
+    odometer FLOAT,
+    hourmeter FLOAT,
+    total_fuel_used FLOAT,
+    obc_hourmeter FLOAT,
+    obc_odometer FLOAT,
+    parameter_value TEXT,
+    parameter_id INT,
+    parameter_name TEXT,
+    ralenti_band_time BIGINT,
+    yellow_band_time BIGINT,
+    efficient_handling_band_time BIGINT,
+    red_band_time BIGINT,
+    load_over_75_band_time BIGINT,
+    inefficient_cruise_control_band_time BIGINT,
+    engine_braking_time BIGINT,
+    cartography_limit_speed FLOAT,
+    gps_speed FLOAT,
+    driver_name TEXT,
+    driver_last_name TEXT,
+    driver_document_type TEXT,
+    driver_document_number TEXT,
+    ignition BOOLEAN,
+    ignition_date TIMESTAMPTZ,
+    fecha_registro TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_reportes_device_id ON reportes(device_id);
+
+INSERT INTO reportes (report_id, device_id, asset_name, event_name, latitude, longitude, speed) VALUES
+('RPT-0001', 1, 'T-01', 'Encendido', -33.4489, -70.6693, 0),
+('RPT-0002', 1, 'T-01', 'En Movimiento', -33.4500, -70.6700, 65.5)
+ON CONFLICT (report_id) DO NOTHING;
+
+-- Operación: Viajes
+CREATE TABLE IF NOT EXISTS viajes (
+    id SERIAL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    estado VARCHAR(50) DEFAULT 'IDA',
+    tipo_operativo VARCHAR(50),
+    conductor_id INT,
+    tracto_id INT,
+    rampla_id INT,
+    cliente_id INT,
+    conductor_nombre VARCHAR(200),
+    tracto_patente VARCHAR(20),
+    rampla_patente VARCHAR(20),
+    cliente_nombre VARCHAR(200),
+    servicio VARCHAR(100),
+    fecha_carga DATE,
+    origen VARCHAR(200),
+    fecha_descarga DATE,
+    destino VARCHAR(200),
+    valor_viaje NUMERIC(12, 2) DEFAULT 0,
+    observaciones TEXT,
+    pernoctacion BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_viajes_fecha ON viajes(fecha);
+CREATE INDEX idx_viajes_conductor_id ON viajes(conductor_id);
+CREATE INDEX idx_viajes_tracto_id ON viajes(tracto_id);
+CREATE INDEX idx_viajes_rampla_id ON viajes(rampla_id);
+CREATE INDEX idx_viajes_cliente_id ON viajes(cliente_id);
+
+INSERT INTO viajes (fecha, estado, tipo_operativo, conductor_id, tracto_id, conductor_nombre, tracto_patente, servicio, origen, destino, valor_viaje) VALUES
+('2026-05-01', 'IDA', 'Operativo', 1, 1, 'Juan Perez', 'AB-CD-12', 'Transporte de carga', 'Lampa', 'Antofagasta', 1200000),
+('2026-05-03', 'RETORNO', 'Operativo', 1, 1, 'Juan Perez', 'AB-CD-12', 'Transporte de carga', 'Antofagasta', 'Lampa', 1200000)
+ON CONFLICT DO NOTHING;
+
+-- Acreditación: Clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(200) NOT NULL,
+    rut VARCHAR(20) UNIQUE,
+    contacto VARCHAR(200),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_clientes_rut ON clientes(rut);
+
+INSERT INTO clientes (nombre, rut, contacto) VALUES
+('Minera Los Andes', '76111111-1', 'contacto@mineralosandes.cl'),
+('Constructora del Sur', '76222222-2', 'contacto@constructorasur.cl')
+ON CONFLICT (rut) DO NOTHING;
+
+-- Acreditación: Requerimientos
+CREATE TABLE IF NOT EXISTS requerimientos (
+    id SERIAL PRIMARY KEY,
+    cliente_id INT REFERENCES clientes(id),
+    nombre VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    tipo_sujeto VARCHAR(20) NOT NULL CHECK (tipo_sujeto IN ('PERSONAL', 'VEHICULO')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_requerimientos_cliente_id ON requerimientos(cliente_id);
+
+INSERT INTO requerimientos (cliente_id, nombre, descripcion, tipo_sujeto) VALUES
+(1, 'Curso de Manejo Defensivo', 'Obligatorio para todo conductor que ingrese a faena', 'PERSONAL'),
+(1, 'Revisión Técnica Vigente', 'Vehículo debe contar con revisión técnica al día', 'VEHICULO')
+ON CONFLICT DO NOTHING;
+
+-- Acreditación: Acreditaciones
+CREATE TABLE IF NOT EXISTS acreditaciones (
+    id SERIAL PRIMARY KEY,
+    requerimiento_id INT REFERENCES requerimientos(id),
+    sujeto_id INT NOT NULL,
+    fecha_emision DATE,
+    fecha_vencimiento DATE,
+    link_documento VARCHAR(500),
+    estado BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_acreditaciones_requerimiento_id ON acreditaciones(requerimiento_id);
+CREATE INDEX idx_acreditaciones_sujeto_id ON acreditaciones(sujeto_id);
+
+INSERT INTO acreditaciones (requerimiento_id, sujeto_id, fecha_emision, fecha_vencimiento, estado) VALUES
+(1, 1, '2026-01-15', '2027-01-15', TRUE),
+(2, 1, '2026-02-01', '2026-08-01', TRUE)
+ON CONFLICT DO NOTHING;
+
+-- Administración: Usuarios
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    ultima_conexion TIMESTAMP,
+    estado BOOLEAN DEFAULT TRUE,
+    permisos JSON DEFAULT '{}'
+);
+
+CREATE INDEX idx_usuarios_email ON usuarios(email);
+
+-- Nota: los usuarios de prueba (admin@asdf.cl, rrhh@asdf.cl, etc.) los siembra
+-- automáticamente modulo_administracion/src/utils/seeder.py al arrancar
+-- (seed_admin_user), generando los password_hash con bcrypt en tiempo de
+-- ejecución. No se insertan aquí para no duplicar/contradecir esa lógica.
