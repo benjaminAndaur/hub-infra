@@ -15,6 +15,34 @@ services:
     networks:
       - asdf-network
 
+  db-operacion:
+    build:
+      context: ./db_operacion
+      dockerfile: Dockerfile
+    container_name: db_operacion
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: operacion_db
+    volumes:
+      - pgdata_operacion:/var/lib/postgresql/data
+    networks:
+      - asdf-network
+
+  db-facturacion:
+    build:
+      context: ./db_facturacion
+      dockerfile: Dockerfile
+    container_name: db_facturacion
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: facturacion_db
+    volumes:
+      - pgdata_facturacion:/var/lib/postgresql/data
+    networks:
+      - asdf-network
+
   gateway:
     image: nginx:latest
     volumes:
@@ -90,8 +118,10 @@ services:
       dockerfile: Dockerfile
     container_name: ms_facturacion
     environment:
-      - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
+      - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-facturacion:5432/facturacion_db
       - JWT_SECRET=super-secret-key-123
+    depends_on:
+      - db-facturacion
     networks:
       - asdf-network
 
@@ -101,8 +131,10 @@ services:
       dockerfile: Dockerfile
     container_name: ms_operacion
     environment:
-      - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db
+      - DATABASE_URL=postgresql+asyncpg://admin:admin123@db-operacion:5432/operacion_db
       - JWT_SECRET=super-secret-key-123
+    depends_on:
+      - db-operacion
     networks:
       - asdf-network
 
@@ -236,3 +268,5 @@ networks:
 
 volumes:
   pgdata:
+  pgdata_operacion:
+  pgdata_facturacion:
