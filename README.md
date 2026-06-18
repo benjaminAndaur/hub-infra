@@ -82,6 +82,18 @@ El Hub empezó como una única base de datos compartida (`asdf_db`). Como primer
 | `operacion_db` (aislada) | `db-operacion` | `modulo_operacion` | `viajes` |
 | `facturacion_db` (aislada) | `db-facturacion` | `modulo_facturacion` | `facturas` |
 
+### Acceso desde DBeaver (host)
+
+Cada Postgres aislado publica su puerto al host, igual que `db-global`:
+
+| Base de datos | Host | Puerto | Usuario | Password | Database |
+|---|---|---|---|---|---|
+| `asdf_db` (compartida) | `localhost` | `5432` | `admin` | `admin123` | `asdf_db` |
+| `operacion_db` (aislada) | `localhost` | `5433` | `admin` | `admin123` | `operacion_db` |
+| `facturacion_db` (aislada) | `localhost` | `5434` | `admin` | `admin123` | `facturacion_db` |
+
+En DBeaver: **New Database Connection → PostgreSQL**, usar el host/puerto/usuario/password/database de la fila correspondiente. Con el stack levantado (`docker-compose up`), basta una conexión por base — no comparten puerto, así que pueden estar las tres abiertas a la vez sin colisión.
+
 **¿Por qué estos dos primero?** Ninguna de las dos tablas (`viajes`, `facturas`) tiene foreign keys hacia otros módulos ni dependía de llamadas HTTP cruzadas — son los candidatos de menor acoplamiento del sistema. Son además, en el roadmap del proyecto, el par publisher/consumer del futuro flujo de eventos `viaje.completado` (RabbitMQ), por lo que aislar su persistencia ahora deja la independencia de datos demostrada antes de sumar mensajería asíncrona.
 
 **Lo que NO cambia para el resto del stack:** Nginx sigue ruteando `/api/v1/operacion/*` y `/api/v1/facturacion/*` exactamente igual (por nombre de contenedor del microservicio, nunca por su base de datos). El frontend tampoco se ve afectado — solo cambió el `DATABASE_URL` interno de esos dos microservicios.

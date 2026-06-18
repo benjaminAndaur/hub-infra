@@ -157,6 +157,8 @@ Desde la migración de `modulo_operacion` y `modulo_facturacion`, el Hub ya no u
 
 Ninguna de las dos tablas migradas (`viajes`, `facturas`) tenía FK hacia otros módulos, lo que las hizo el candidato de menor acoplamiento para ser las primeras en aislarse. Nginx y el frontend no cambian: siguen ruteando por nombre de contenedor del microservicio, nunca por su base de datos.
 
+**Acceso desde el host (DBeaver u otro cliente Postgres):** los 3 contenedores Postgres publican puerto al host —`db-global:5432`, `db-operacion:5433`, `db-facturacion:5434`— todos con `admin`/`admin123`. Conectar a `localhost:<puerto>` con la base de datos correspondiente (`asdf_db`, `operacion_db`, `facturacion_db`).
+
 **pg_cron:** Se ejecuta `snapshot_personal_diario()` cada día a las 23:59 en `db-global`, para copiar todos los registros de `personal` a `personal_historico` (auditoría histórica). Las bases aisladas no usan pg_cron.
 
 ## El Watchdog (`modulo_watchdog`)
