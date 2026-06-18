@@ -105,21 +105,8 @@ INSERT INTO ingresos_bodega (usuario_entrega, usuario_recepcion, tipo_doc_origen
 ('Distribuidora Neumaticos', 'Vicente Parada', 'Orden de Compra', 'Guia de Despacho', 'GD-1050', '2026-04-28', 'Set de neumaticos nuevos', 'OC-5003')
 ON CONFLICT DO NOTHING;
 
--- Facturación: Facturas
-CREATE TABLE IF NOT EXISTS facturas (
-    id SERIAL PRIMARY KEY,
-    cliente VARCHAR(100) NOT NULL,
-    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    total FLOAT NOT NULL,
-    estado VARCHAR(50) DEFAULT 'Emitida'
-);
-
-INSERT INTO facturas (cliente, total, estado) VALUES
-('Minera Los Andes', 1500000, 'Pagada'),
-('Constructora del Sur', 850000, 'Emitida'),
-('Agricola Central', 420000, 'Vencida'),
-('Transportes Unidos', 2100000, 'Emitida')
-ON CONFLICT DO NOTHING;
+-- Nota: la tabla "facturas" vive en su propia base de datos aislada
+-- (ver hub-infra/db_facturacion/init.sql) — Database per Service.
 
 -- Prevención: Incidentes
 CREATE TABLE IF NOT EXISTS incidentes (
@@ -296,41 +283,8 @@ INSERT INTO reportes (report_id, device_id, asset_name, event_name, latitude, lo
 ('RPT-0002', 1, 'T-01', 'En Movimiento', -33.4500, -70.6700, 65.5)
 ON CONFLICT (report_id) DO NOTHING;
 
--- Operación: Viajes
-CREATE TABLE IF NOT EXISTS viajes (
-    id SERIAL PRIMARY KEY,
-    fecha DATE NOT NULL,
-    estado VARCHAR(50) DEFAULT 'IDA',
-    tipo_operativo VARCHAR(50),
-    conductor_id INT,
-    tracto_id INT,
-    rampla_id INT,
-    cliente_id INT,
-    conductor_nombre VARCHAR(200),
-    tracto_patente VARCHAR(20),
-    rampla_patente VARCHAR(20),
-    cliente_nombre VARCHAR(200),
-    servicio VARCHAR(100),
-    fecha_carga DATE,
-    origen VARCHAR(200),
-    fecha_descarga DATE,
-    destino VARCHAR(200),
-    valor_viaje NUMERIC(12, 2) DEFAULT 0,
-    observaciones TEXT,
-    pernoctacion BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_viajes_fecha ON viajes(fecha);
-CREATE INDEX idx_viajes_conductor_id ON viajes(conductor_id);
-CREATE INDEX idx_viajes_tracto_id ON viajes(tracto_id);
-CREATE INDEX idx_viajes_rampla_id ON viajes(rampla_id);
-CREATE INDEX idx_viajes_cliente_id ON viajes(cliente_id);
-
-INSERT INTO viajes (fecha, estado, tipo_operativo, conductor_id, tracto_id, conductor_nombre, tracto_patente, servicio, origen, destino, valor_viaje) VALUES
-('2026-05-01', 'IDA', 'Operativo', 1, 1, 'Juan Perez', 'AB-CD-12', 'Transporte de carga', 'Lampa', 'Antofagasta', 1200000),
-('2026-05-03', 'RETORNO', 'Operativo', 1, 1, 'Juan Perez', 'AB-CD-12', 'Transporte de carga', 'Antofagasta', 'Lampa', 1200000)
-ON CONFLICT DO NOTHING;
+-- Nota: la tabla "viajes" vive en su propia base de datos aislada
+-- (ver hub-infra/db_operacion/init.sql) — Database per Service.
 
 -- Acreditación: Clientes
 CREATE TABLE IF NOT EXISTS clientes (
