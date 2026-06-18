@@ -64,13 +64,15 @@ No hay tests automatizados en el proyecto.
 
 | Variable | Valor en dev |
 |---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db` |
+| `DATABASE_URL` (mayoría de módulos) | `postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db` |
+| `DATABASE_URL` (`ms-operacion`) | `postgresql+asyncpg://admin:admin123@db-operacion:5432/operacion_db` |
+| `DATABASE_URL` (`ms-facturacion`) | `postgresql+asyncpg://admin:admin123@db-facturacion:5432/facturacion_db` |
 | `JWT_SECRET` | `super-secret-key-123` |
 | `VITE_API_URL` | `/api/v1` (inyectado en build; Nginx lo proxifica) |
 
 ## Arquitectura
 
-**11 módulos de negocio independientes**, cada uno con backend Python/Quart y frontend React/Vite. Todos comparten una sola base de datos PostgreSQL 15. Todo el tráfico entra por un gateway Nginx (`puerto 8080`) que:
+**11 módulos de negocio independientes**, cada uno con backend Python/Quart y frontend React/Vite. La mayoría comparte una base de datos PostgreSQL 15 (`asdf_db`), pero `modulo_operacion` y `modulo_facturacion` ya implementan **Database per Service**: cada uno tiene su propio contenedor Postgres (`db-operacion`/`operacion_db` y `db-facturacion`/`facturacion_db`) — ver sección "Base de datos" más abajo. Todo el tráfico entra por un gateway Nginx (`puerto 8080`) que:
 1. Sirve los frontends por path (`/rrhh/`, `/mantencion/`, etc.)
 2. Enruta las APIs (`/api/v1/*`) al microservicio correspondiente
 3. Valida JWT en cada request protegida vía `auth_request` al `ms-middleware`
@@ -143,22 +145,19 @@ No se usa React Router. La navegación es por `activeTab` → renderizado condic
 
 Al montar, cada `App.jsx` llama `checkModuleAccess('nombre_modulo', '/ruta/')` que lee el JWT del localStorage y redirige si el usuario no tiene permiso.
 
-### Base de datos (PostgreSQL 15, `asdf_db`)
+### Base de datos: Database per Service
 
-Schema completo en `db_postgres/init.sql`. Módulos y sus tablas principales:
+Desde la migración de `modulo_operacion` y `modulo_facturacion`, el Hub ya no usa una única base de datos para todo. Hay 3 contenedores Postgres 15 distintos:
 
-| Módulo | Tablas principales |
-|---|---|
-| RRHH | `personal`, `personal_historico` |
-| Mantención | `vehiculos`, `mantenciones`, `mantenciones_template`, `ordenes_trabajo`, `ot_repuestos` |
-| Acreditación | `clientes`, `requerimientos`, `acreditaciones` |
-| Operación | `viajes` |
-| Bodega | `productos`, `ingresos_bodega` |
-| Facturación | `facturas` |
-| Prevención | `incidentes` |
-| Administración | `usuarios` |
+| Base de datos | Contenedor | Schema | Módulo dueño | Tablas principales |
+|---|---|---|---|---|
+| `asdf_db` (compartida) | `db-global` | `db_postgres/init.sql` | RRHH, Mantención, Acreditación, Bodega, Prevención, Administración | `personal`, `personal_historico`, `vehiculos`, `mantenciones`, `mantenciones_template`, `ordenes_trabajo`, `ot_repuestos`, `reportes`, `clientes`, `requerimientos`, `acreditaciones`, `productos`, `ingresos_bodega`, `solicitudes_bodega`, `incidentes`, `usuarios` |
+| `operacion_db` (aislada) | `db-operacion` | `db_operacion/init.sql` | `modulo_operacion` | `viajes` |
+| `facturacion_db` (aislada) | `db-facturacion` | `db_facturacion/init.sql` | `modulo_facturacion` | `facturas` |
 
-**pg_cron:** Se ejecuta `snapshot_personal_diario()` cada día a las 23:59 para copiar todos los registros de `personal` a `personal_historico` (auditoría histórica).
+Ninguna de las dos tablas migradas (`viajes`, `facturas`) tenía FK hacia otros módulos, lo que las hizo el candidato de menor acoplamiento para ser las primeras en aislarse. Nginx y el frontend no cambian: siguen ruteando por nombre de contenedor del microservicio, nunca por su base de datos.
+
+**pg_cron:** Se ejecuta `snapshot_personal_diario()` cada día a las 23:59 en `db-global`, para copiar todos los registros de `personal` a `personal_historico` (auditoría histórica). Las bases aisladas no usan pg_cron.
 
 ## El Watchdog (`modulo_watchdog`)
 

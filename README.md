@@ -6,10 +6,11 @@ Infraestructura compartida del Hub Empresarial: gateway Nginx, base de datos Pos
 
 | Carpeta/Archivo | Descripción |
 |---|---|
-| `docker-compose.yml` | Orquestación completa: base de datos, gateway, 10 microservicios y 10 frontends |
+| `docker-compose.yml` | Orquestación completa: bases de datos, gateway, 10 microservicios y 10 frontends |
 | `nginx/nginx.conf` | Gateway Nginx (puerto `8080`): rutea frontends por path, proxifica `/api/v1/*` a cada microservicio y valida JWT vía `auth_request` |
-| `db_postgres/init.sql` | Schema completo de la base de datos `asdf_db` (PostgreSQL 15) |
-| `db_postgres/Dockerfile` y `docker-compose.yml` | Imagen y servicio de base de datos |
+| `db_postgres/init.sql` | Schema de la base de datos compartida `asdf_db` (PostgreSQL 15) |
+| `db_operacion/init.sql` | Schema de la base de datos aislada `operacion_db` (Database per Service) |
+| `db_facturacion/init.sql` | Schema de la base de datos aislada `facturacion_db` (Database per Service) |
 | `CLAUDE.md` | Documentación de arquitectura y guía de desarrollo del Hub Empresarial |
 
 ## Cómo levantar el stack completo
@@ -59,7 +60,9 @@ Todo entra por el gateway Nginx en `http://localhost:8080`:
 
 | Variable | Valor en dev |
 |---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db` |
+| `DATABASE_URL` (mayoría de módulos) | `postgresql+asyncpg://admin:admin123@db-global:5432/asdf_db` |
+| `DATABASE_URL` (`ms-operacion`) | `postgresql+asyncpg://admin:admin123@db-operacion:5432/operacion_db` |
+| `DATABASE_URL` (`ms-facturacion`) | `postgresql+asyncpg://admin:admin123@db-facturacion:5432/facturacion_db` |
 | `JWT_SECRET` | `super-secret-key-123` |
 | `VITE_API_URL` | `/api/v1` (inyectado en build de los frontends; Nginx lo proxifica) |
 
@@ -69,21 +72,37 @@ Todo entra por el gateway Nginx en `http://localhost:8080`:
 2. Nginx intercepta cada request protegida con `auth_request /_auth_check` → proxifica a `ms-middleware:8009/validate`.
 3. El middleware valida el JWT y retorna `X-User-ID`, `X-User-Role`, `X-User-Email` como headers, que Nginx pasa al microservicio destino.
 
-## Base de datos (`asdf_db`, PostgreSQL 15)
+## Base de datos: Database per Service
 
-Schema en `db_postgres/init.sql`. Tablas principales por módulo:
+El Hub empezó como una única base de datos compartida (`asdf_db`). Como primer paso hacia una arquitectura de microservicios con persistencia realmente independiente, **`modulo_operacion` y `modulo_facturacion` migraron a su propia base de datos PostgreSQL aislada**, cada una en su propio contenedor:
 
-| Módulo | Tablas |
-|---|---|
-| RRHH | `personal`, `personal_historico` |
-| Mantención | `vehiculos`, `mantenciones`, `mantenciones_template`, `ordenes_trabajo`, `ot_repuestos` |
-| Acreditación | `clientes`, `requerimientos`, `acreditaciones` |
-| Operación | `viajes` |
-| Bodega | `productos`, `ingresos_bodega` |
-| Facturación | `facturas` |
-| Prevención | `incidentes` |
-| Administración | `usuarios` |
+| Base de datos | Contenedor | Módulo dueño | Tablas |
+|---|---|---|---|
+| `asdf_db` (compartida) | `db-global` | RRHH, Mantención, Acreditación, Bodega, Prevención, Administración | `personal`, `personal_historico`, `vehiculos`, `mantenciones*`, `ordenes_trabajo`, `ot_repuestos`, `reportes`, `clientes`, `requerimientos`, `acreditaciones`, `productos`, `ingresos_bodega`, `solicitudes_bodega`, `incidentes`, `usuarios` |
+| `operacion_db` (aislada) | `db-operacion` | `modulo_operacion` | `viajes` |
+| `facturacion_db` (aislada) | `db-facturacion` | `modulo_facturacion` | `facturas` |
 
-**pg_cron:** ejecuta `snapshot_personal_diario()` cada día a las 23:59, copiando todos los registros de `personal` a `personal_historico` (auditoría histórica).
+**¿Por qué estos dos primero?** Ninguna de las dos tablas (`viajes`, `facturas`) tiene foreign keys hacia otros módulos ni dependía de llamadas HTTP cruzadas — son los candidatos de menor acoplamiento del sistema. Son además, en el roadmap del proyecto, el par publisher/consumer del futuro flujo de eventos `viaje.completado` (RabbitMQ), por lo que aislar su persistencia ahora deja la independencia de datos demostrada antes de sumar mensajería asíncrona.
 
-No hay migraciones — el schema se crea con `Base.metadata.create_all()` al arrancar cada microservicio (schema-on-startup).
+**Lo que NO cambia para el resto del stack:** Nginx sigue ruteando `/api/v1/operacion/*` y `/api/v1/facturacion/*` exactamente igual (por nombre de contenedor del microservicio, nunca por su base de datos). El frontend tampoco se ve afectado — solo cambió el `DATABASE_URL` interno de esos dos microservicios.
+
+```mermaid
+flowchart TB
+    subgraph Frontends["Frontends React (Vite)"]
+        FE[front_modulo_*]
+    end
+
+    FE --> NGINX["Nginx Gateway :8080"]
+    NGINX -- "auth_request /_auth_check" --> MW["ms-middleware :8009<br/>(valida JWT)"]
+    NGINX --> MSOP["ms-operacion :8000"]
+    NGINX --> MSFACT["ms-facturacion :8000"]
+    NGINX --> MSOTROS["resto de ms-* :8000<br/>(rrhh, mantencion, bodega,<br/>acreditacion, prevencion, administracion)"]
+
+    MSOP --> DBOP[("db-operacion<br/>operacion_db")]
+    MSFACT --> DBFACT[("db-facturacion<br/>facturacion_db")]
+    MSOTROS --> DBGLOBAL[("db-global<br/>asdf_db")]
+```
+
+**pg_cron:** ejecuta `snapshot_personal_diario()` cada día a las 23:59 en `db-global`, copiando todos los registros de `personal` a `personal_historico` (auditoría histórica). Las bases de datos aisladas no usan pg_cron — no lo necesitan.
+
+No hay migraciones — el schema se crea con `init.sql` (montado en `docker-entrypoint-initdb.d`) y reforzado por `Base.metadata.create_all()` al arrancar cada microservicio (schema-on-startup).
