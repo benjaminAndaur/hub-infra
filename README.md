@@ -7,6 +7,7 @@ Infraestructura compartida del Hub Empresarial: gateway Nginx, base de datos Pos
 | Carpeta/Archivo | Descripción |
 |---|---|
 | `docker-compose.yml` | Orquestación completa: bases de datos, gateway, 10 microservicios y 10 frontends |
+| `docker-compose.sonarqube.yml` | SonarQube Community + Postgres dedicado, para medir cobertura/Quality Gate (separado del compose principal, no es parte del runtime de la app) |
 | `nginx/nginx.conf` | Gateway Nginx (puerto `8080`): rutea frontends por path, proxifica `/api/v1/*` a cada microservicio y valida JWT vía `auth_request` |
 | `db_postgres/init.sql` | Schema de la base de datos compartida `asdf_db` (PostgreSQL 15) |
 | `db_operacion/init.sql` | Schema de la base de datos aislada `operacion_db` (Database per Service) |
@@ -118,3 +119,13 @@ flowchart TB
 **pg_cron:** ejecuta `snapshot_personal_diario()` cada día a las 23:59 en `db-global`, copiando todos los registros de `personal` a `personal_historico` (auditoría histórica). Las bases de datos aisladas no usan pg_cron — no lo necesitan.
 
 No hay migraciones — el schema se crea con `init.sql` (montado en `docker-entrypoint-initdb.d`) y reforzado por `Base.metadata.create_all()` al arrancar cada microservicio (schema-on-startup).
+
+## Calidad de código: SonarQube
+
+```bash
+docker-compose -f docker-compose.sonarqube.yml up -d
+```
+
+Levanta SonarQube Community Edition en `http://localhost:9000` (usuario inicial `admin`/`admin`) con su propio Postgres dedicado, en una red Docker separada (`sonar-network`) del resto del stack. Cada microservicio en `hub-backends` (y los repos `hub-ms-operacion`/`hub-ms-facturacion`) ya tiene su `sonar-project.properties` y reporta cobertura vía `coverage.xml` generado por `pytest-cov`.
+
+Ver [`hub-backends/GUIA_PRUEBAS.md`](https://github.com/benjaminAndaur/hub-backends/blob/main/GUIA_PRUEBAS.md) para el flujo completo: generar tokens, correr `sonar-scanner`, y leer el Quality Gate.
