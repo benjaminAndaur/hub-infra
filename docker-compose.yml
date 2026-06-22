@@ -142,6 +142,21 @@ services:
     networks:
       - asdf-network
 
+  bff:
+    build:
+      context: ../hub-bff
+      dockerfile: Dockerfile
+    container_name: hub_bff
+    environment:
+      - PORT=8010
+      - OPERACION_BASE_URL=http://ms-operacion:8000
+      - FACTURACION_BASE_URL=http://ms-facturacion:8000
+    depends_on:
+      - ms-operacion
+      - ms-facturacion
+    networks:
+      - asdf-network
+
   ms-prevencion:
     build:
       context: ../hub-backends/modulo_prevencion

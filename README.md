@@ -66,6 +66,8 @@ Todo entra por el gateway Nginx en `http://localhost:8080`:
 | `DATABASE_URL` (`ms-facturacion`) | `postgresql+asyncpg://admin:admin123@db-facturacion:5432/facturacion_db` |
 | `JWT_SECRET` | `super-secret-key-123` |
 | `VITE_API_URL` | `/api/v1` (inyectado en build de los frontends; Nginx lo proxifica) |
+| `OPERACION_BASE_URL` (`bff`) | `http://ms-operacion:8000` |
+| `FACTURACION_BASE_URL` (`bff`) | `http://ms-facturacion:8000` |
 
 ## Flujo de autenticación (a nivel gateway)
 
@@ -107,14 +109,19 @@ flowchart TB
 
     FE --> NGINX["Nginx Gateway :8080"]
     NGINX -- "auth_request /_auth_check" --> MW["ms-middleware :8009<br/>(valida JWT)"]
-    NGINX --> MSOP["ms-operacion :8000"]
-    NGINX --> MSFACT["ms-facturacion :8000"]
+    NGINX --> BFF["hub-bff :8010<br/>(NestJS, agrega Operación + Facturación,<br/>Circuit Breaker)"]
+    BFF --> MSOP["ms-operacion :8000"]
+    BFF --> MSFACT["ms-facturacion :8000"]
+    NGINX --> MSOP
+    NGINX --> MSFACT
     NGINX --> MSOTROS["resto de ms-* :8000<br/>(rrhh, mantencion, bodega,<br/>acreditacion, prevencion, administracion)"]
 
     MSOP --> DBOP[("db-operacion<br/>operacion_db")]
     MSFACT --> DBFACT[("db-facturacion<br/>facturacion_db")]
     MSOTROS --> DBGLOBAL[("db-global<br/>asdf_db")]
 ```
+
+El BFF (`hub-bff`, repo propio en NestJS) es una ruta **adicional** sobre el gateway: agrega en `GET /api/v1/bff/dashboard` los datos de `ms-operacion` y `ms-facturacion` en un solo payload, protegiendo cada llamada downstream con Circuit Breaker (`opossum`). Las rutas directas `/api/v1/operacion/*` y `/api/v1/facturacion/*` siguen existiendo sin cambios — el BFF no las reemplaza, conviven ambas. Ver [`hub-bff/README.md`](https://github.com/benjaminAndaur/hub-bff) para el detalle del patrón y cómo demostrarlo en vivo.
 
 **pg_cron:** ejecuta `snapshot_personal_diario()` cada día a las 23:59 en `db-global`, copiando todos los registros de `personal` a `personal_historico` (auditoría histórica). Las bases de datos aisladas no usan pg_cron — no lo necesitan.
 
