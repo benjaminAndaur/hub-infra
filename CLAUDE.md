@@ -69,6 +69,8 @@ No hay tests automatizados en el proyecto.
 | `DATABASE_URL` (`ms-facturacion`) | `postgresql+asyncpg://admin:admin123@db-facturacion:5432/facturacion_db` |
 | `JWT_SECRET` | `super-secret-key-123` |
 | `VITE_API_URL` | `/api/v1` (inyectado en build; Nginx lo proxifica) |
+| `OPERACION_BASE_URL` (`bff`) | `http://ms-operacion:8000` |
+| `FACTURACION_BASE_URL` (`bff`) | `http://ms-facturacion:8000` |
 
 ## Arquitectura
 
@@ -92,6 +94,7 @@ No hay tests automatizados en el proyecto.
 | `modulo_middleware` | **8009** | — | Validación JWT (interno) |
 | `modulo_watchdog` | **8008** | 3002 (`/watchdog/`) | Monitoreo servicios |
 | `front_modulo_login` | — | 3008 (`/login/`) | Login |
+| `hub-bff` | **8010** | — | BFF (NestJS): agrega Operación + Facturación, Circuit Breaker |
 
 ### Flujo de autenticación
 
