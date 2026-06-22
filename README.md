@@ -1,14 +1,14 @@
 # hub-infra
 
-Infraestructura compartida del Hub Empresarial: gateway Nginx, base de datos PostgreSQL y orquestación Docker que conecta los repos [`hub-backends`](https://github.com/benjaminAndaur/hub-backends) y [`hub-frontends`](https://github.com/benjaminAndaur/hub-frontends).
+Infraestructura compartida del Hub Empresarial: gateway Nginx, base de datos PostgreSQL y orquestación Docker que conecta los repos [`hub-backends`](https://github.com/benjaminAndaur/hub-backends), [`hub-frontends`](https://github.com/benjaminAndaur/hub-frontends), [`hub-ms-operacion`](https://github.com/benjaminAndaur/hub-ms-operacion), [`hub-ms-facturacion`](https://github.com/benjaminAndaur/hub-ms-facturacion) y [`hub-bff`](https://github.com/benjaminAndaur/hub-bff).
 
 ## Contenido
 
 | Carpeta/Archivo | Descripción |
 |---|---|
-| `docker-compose.yml` | Orquestación completa: bases de datos, gateway, 10 microservicios y 10 frontends |
+| `docker-compose.yml` | Orquestación completa: bases de datos, gateway, 11 microservicios, el BFF y 10 frontends |
 | `docker-compose.sonarqube.yml` | SonarQube Community + Postgres dedicado, para medir cobertura/Quality Gate (separado del compose principal, no es parte del runtime de la app) |
-| `nginx/nginx.conf` | Gateway Nginx (puerto `8080`): rutea frontends por path, proxifica `/api/v1/*` a cada microservicio y valida JWT vía `auth_request` |
+| `nginx/nginx.conf` | Gateway Nginx (puerto `8080`): rutea frontends por path, proxifica `/api/v1/*` a cada microservicio (y al BFF) y valida JWT vía `auth_request` |
 | `db_postgres/init.sql` | Schema de la base de datos compartida `asdf_db` (PostgreSQL 15) |
 | `db_operacion/init.sql` | Schema de la base de datos aislada `operacion_db` (Database per Service) |
 | `db_facturacion/init.sql` | Schema de la base de datos aislada `facturacion_db` (Database per Service) |
@@ -45,6 +45,8 @@ Todo entra por el gateway Nginx en `http://localhost:8080`:
 | Facturación | `http://localhost:8080/facturacion/` |
 | Prevención | `http://localhost:8080/prevencion/` |
 | Watchdog | `http://localhost:8080/watchdog/` |
+| BFF — health | `http://localhost:8080/api/v1/bff/health` |
+| BFF — Swagger | `http://localhost:8080/bff/docs` |
 | pgAdmin | `http://localhost:5050` (`admin@asdf.com` / `admin`) |
 
 ## Usuarios pre-cargados (seeder)
